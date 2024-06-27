@@ -59,6 +59,7 @@ def processCommand(c):
    if "open google" in c.lower():
       speak("opening google")
       webbrowser.open("https://www.google.co.in/")
+   elif "open facebook" in c.lower():   
       speak("opening facebook")
       webbrowser.open("https://facebook.com") 
    elif "open watsapp" in c.lower():
