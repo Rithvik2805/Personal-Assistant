@@ -2,125 +2,138 @@ import speech_recognition as sr
 import webbrowser
 import pyttsx3
 import musicLibrary
+import websites
 import requests
 from gtts import gTTS
 import pygame
 from openai import OpenAI
 import os
+import threading
+from datetime import datetime
+import openai
 
+# Setting up audio receiver and output
 recognizer = sr.Recognizer()
 engine = pyttsx3.init()
-#Search fo "news api" in browser and create an account in it then it generates an api key for you
-newsapi = "enter your news api key"
+# Adding newsapi allows the bot to know the latest news
+newsapi = "477a01c6e4d542e2b7484e366790bd70"
 
+# Constants for commands
+COMMAND_OPEN = "open"
+COMMAND_TIME = "what is time now"
+COMMAND_PLAY = "play"
+COMMAND_NEWS = "say news"
+COMMAND_END = "exit"
+
+# Setting the voice of assistant
 def speak(text):
-    engine.say(text) 
-    engine.runAndWait()
+    tts = gTTS(text)
+    tts.save('temp.mp3')
 
-def speak(text):
-   tts=gTTS(text)
-   tts.save('temp.mp3')
+    # Initialize Pygame
+    pygame.init()
+    pygame.mixer.init()
+    pygame.mixer.music.load('temp.mp3')
+    pygame.mixer.music.play()
 
-   # Initialize Pygame
-   pygame.init()
+    # Wait for the music to finish playing
+    while pygame.mixer.music.get_busy():
+        pygame.time.Clock().tick(10)
+    pygame.mixer.music.stop()
+    pygame.mixer.music.unload() 
+    os.remove("temp.mp3")      
 
-   # Initialize the mixer module
-   pygame.mixer.init()
-
-   # Load the MP3 file
-   pygame.mixer.music.load('temp.mp3')
-
-   # Play the loaded MP3 file
-   pygame.mixer.music.play()
-
-   # Wait for the music to finish playing
-   while pygame.mixer.music.get_busy():
-    pygame.time.Clock().tick(10)
-   pygame.mixer.music.unload() 
-   os.remove("temp.mp3")      
-
-def aiprocess(text):
-
-    client = OpenAI(
-        api_key="Enter Your API Key"
-    )
-
+# If the command is out of the pre-defined instructions, let AI process the command
+def aiprocess(command):
+    client = OpenAI(api_key=os.getenv("600878f5801f449695a6b673e94c4876"))  # Use environment variable for API key
     completion = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-        {"role": "system", "content": "You are a virtual assistant named friday skilled in general tasks like Alexa and Google Cloud"},
-        {"role": "user", "content": command}
-    ]
+            {"role": "system", "content": "You are a virtual assistant named alexa who works as siri and googlecloud"},
+            {"role": "user", "content": command}
+        ]
     )
     
-    return completion.choices[0].message.content   
+    return completion.choices[0].message.content
 
-def processCommand(c):
-   if "open google" in c.lower():
-      speak("opening google")
-      webbrowser.open("https://www.google.co.in/")
-   elif "open facebook" in c.lower():   
-      speak("opening facebook")
-      webbrowser.open("https://facebook.com") 
-   elif "open watsapp" in c.lower():
-      speak("opening watsapp")
-      webbrowser.open("https://web.whatsapp.com")   
-   elif "open youtube" in c.lower():
-      speak("opening youtube")
-      webbrowser.open("https://youtube.com")     
-   elif c.lower().startswith("play"): 
-      song = c.lower().split(" ")[1] 
-      link = musicLibrary.music[song]
-      if True :
-         #speaks only if the song is available in the musicLibrary
-         speak("playing")
-      webbrowser.open(link)
-       
-   elif "news" in c.lower():
-      r = requests.get(f"https://newsapi.org/v2/top-headlines?country=in&apiKey={newsapi}")
-      if r.status_code == 200:
-    # Parse the JSON response
-       data = r.json()
-    # Extract the articles
-       articles = data.get("articles", [])
-    
-    # Read the headlines
-      for article in articles:
-        speak(article['title'])
-   else:
-      # let openai handle the request
-          output = aiprocess(c)
-          speak(output)
-      
+# Command processing functions
+def process_open_command(site):
+    weblink = websites.browselinks.get(site)
+    if weblink:
+        speak(f"Opening {site}")
+        webbrowser.open(weblink)
 
+def process_time_command():
+    now = datetime.now()
+    current_time = now.strftime("%H:%M:%S")
+    speak(f"The time right now is {current_times}")
+
+def process_play_command(song):
+    link = musicLibrary.music.get(song)
+    if link:
+        speak(f"Playing {song}")
+        webbrowser.open(link)
+    else:
+        speak(f"Sorry, I couldn't find the song {song} in the Library")
+
+def process_news_command():
+    r = requests.get(f"https://newsapi.org/v2/top-headlines?country=in&apiKey={newsapi}")
+    if r.status_code == 200:
+        data = r.json()
+        articles = data.get("articles", [])
+        for article in articles:
+            speak(article['title'])  
+
+def processCommand(command):  
+    command_lower = command.lower()
+    if command_lower.startswith(COMMAND_OPEN):
+        parts = command_lower.split(" ", 1)
+        if len(parts) > 1:
+            site = parts[1]
+            process_open_command(site)
+        else:
+            speak("Please specify a site to open.")
+    elif COMMAND_TIME in command_lower:
+        process_time_command()
+    elif command_lower.startswith(COMMAND_PLAY): 
+        parts = command_lower.split(" ", 1)
+        if len(parts) > 1:
+            song = parts[1]
+            process_play_command(song)
+        else:
+            speak("Please specify a song to play.")
+    elif COMMAND_NEWS in command_lower:
+        process_news_command()
+    elif COMMAND_END in command_lower:
+        speak("peace")
+        exit()
+    else:
+        output = aiprocess(command)
+        speak(output)
 
 if __name__ == "__main__":
-    speak("Launching Friday")
+    speak("Launching Alexa")
     while True:
-     #Listen for the wake work Jarvis
-     #obtain audio from the microphone
-     r = sr.Recognizer()
+        try:
+            with sr.Microphone() as source:
+                print("Listening for wake word...")
+                audio = recognizer.listen(source, timeout=2, phrase_time_limit=2)
+                word = recognizer.recognize_google(audio)  # type: ignore[attr-defined]
+                if word and word.lower() == "alexa":
+                    speak("Yes Boss")
+                    with sr.Microphone() as source:
+                        print("Activated, listening for command...")
+                        audio = recognizer.listen(source, timeout=2, phrase_time_limit=2)
+                        command = recognizer.recognize_google(audio)  # type: ignore[attr-defined]
+                        if command:
+                            print(f"Recognized command: {command}")
+                            processCommand(command)
+                        else:
+                            print("No command recognized.")
 
-     print("recognizing...")
-     try:
-        with sr.Microphone() as source:
-          print("Listening...")
-          audio = r.listen(source,timeout=2,phrase_time_limit=1)
-        word = r.recognize_google(audio)
-        if(word.lower() =="friday"):
-           speak("Yes Boss")
-           #Listen for command
-           with sr.Microphone() as source:
-            print("Activated...")
-            audio = r.listen(source)
-            command = r.recognize_google(audio)
-
-            processCommand(command)
-
-
-     except Exception as e:
-        print("Error; {0}".format(e))      
-       
-
-
-
+        except sr.UnknownValueError:
+            print("Could not understand audio")
+        except sr.RequestError as e:
+            print(f"Could not request results from Google Speech Recognition service; {e}")
+        except Exception as e:
+            print(f"Error: {e}")    
