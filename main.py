@@ -1,3 +1,4 @@
+#Author: G.Rithvik Nag
 import speech_recognition as sr
 import webbrowser
 import pyttsx3
@@ -16,7 +17,7 @@ import openai
 recognizer = sr.Recognizer()
 engine = pyttsx3.init()
 # Adding newsapi allows the bot to know the latest news
-newsapi = "477a01c6e4d542e2b7484e366790bd70"
+newsapi = "Enter Your NewsAPI key bro!!"
 
 # Constants for commands
 COMMAND_OPEN = "open"
@@ -45,7 +46,7 @@ def speak(text):
 
 # If the command is out of the pre-defined instructions, let AI process the command
 def aiprocess(command):
-    client = OpenAI(api_key=os.getenv("600878f5801f449695a6b673e94c4876"))  # Use environment variable for API key
+    client = OpenAI(api_key=os.getenv("Paste your OpenAI key...."))  # Use environment variable for API key
     completion = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -137,3 +138,4 @@ if __name__ == "__main__":
             print(f"Could not request results from Google Speech Recognition service; {e}")
         except Exception as e:
             print(f"Error: {e}")    
+#Enjoy....
